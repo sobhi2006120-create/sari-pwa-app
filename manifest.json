@@ -1,37 +1,46 @@
 {
-    "name": "صاري تطوير الأصالة",
-    "short_name": "صاري",
-    "description": "تطبيق عرض ملفات الإكسل بكل تفاصيلها",
-    "start_url": ".",
-    "display": "standalone",
-    "background_color": "#0a0a0a",
-    "theme_color": "#FFD700",
-    "orientation": "portrait",
-    "scope": ".",
-    "lang": "ar",
-    "dir": "rtl",
-    "icons": [
+  "name": "صاري تطوير الأصالة",
+  "short_name": "صاري",
+  "description": "تطبيق عرض ملفات الإكسل بكل تفاصيلها",
+  "start_url": ".",
+  "display": "standalone",
+  "background_color": "#0a0a0a",
+  "theme_color": "#FFD700",
+  "orientation": "portrait",
+  "scope": ".",
+  "lang": "ar",
+  "dir": "rtl",
+  "icons": [
+    {
+      "src": "https://i.imgur.com/kP5l1xN.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "https://i.imgur.com/kP5l1xN.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "categories": [
+    "business",
+    "productivity",
+    "utilities"
+  ],
+  "shortcuts": [
+    {
+      "name": "فتح التطبيق",
+      "short_name": "فتح",
+      "description": "فتح تطبيق صاري",
+      "url": ".",
+      "icons": [
         {
-            "src": "https://i.imgur.com/kP5l1xN.png",
-            "sizes": "192x192",
-            "type": "image/png",
-            "purpose": "any maskable"
-        },
-        {
-            "src": "https://i.imgur.com/kP5l1xN.png",
-            "sizes": "512x512",
-            "type": "image/png",
-            "purpose": "any maskable"
+          "src": "https://i.imgur.com/kP5l1xN.png",
+          "sizes": "96x96"
         }
-    ],
-    "categories": ["business", "productivity", "utilities"],
-    "shortcuts": [
-        {
-            "name": "فتح التطبيق",
-            "short_name": "فتح",
-            "description": "فتح تطبيق صاري",
-            "url": ".",
-            "icons": [{ "src": "https://i.imgur.com/kP5l1xN.png", "sizes": "96x96" }]
-        }
-    ]
+      ]
+    }
+  ]
 }
