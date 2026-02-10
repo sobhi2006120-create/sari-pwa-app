@@ -1,15 +1,6 @@
 <!DOCTYPE html>
 <html lang="ar" dir="rtl">
 <head>
-<!-- PWA Meta Tags -->
-<meta name="theme-color" content="#FFD700">
-<meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="black">
-<meta name="apple-mobile-web-app-title" content="صاري">
-<link rel="apple-touch-icon" href="https://i.imgur.com/kP5l1xN.png">
-
-<!-- PWA Manifest -->
-<link rel="manifest" href="manifest.json">
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>صاري تطوير الأصالة</title>
@@ -813,6 +804,7 @@
             background-clip: padding-box;
             transition: all 0.2s ease;
             box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.1);
+            vertical-align: middle;
         }
         
         /* Enhanced header borders */
@@ -828,6 +820,7 @@
             box-shadow: 
                 inset 0 0 0 1px rgba(255, 255, 255, 0.3),
                 0 2px 4px rgba(0, 0, 0, 0.1);
+            vertical-align: middle;
         }
         
         /* Enhanced cell borders */
@@ -932,6 +925,27 @@
                 background-color: transparent;
                 transform: scale(1);
             }
+        }
+        
+        /* Merged cell styling */
+        .merged-cell {
+            background: linear-gradient(135deg, rgba(255, 215, 0, 0.1) 0%, rgba(255, 165, 0, 0.05) 100%);
+            font-weight: 500;
+            text-align: center;
+            position: relative;
+        }
+        
+        body.light-theme .merged-cell {
+            background: linear-gradient(135deg, rgba(255, 215, 0, 0.2) 0%, rgba(255, 165, 0, 0.1) 100%);
+        }
+        
+        .merged-cell::after {
+            content: '';
+            position: absolute;
+            inset: 0;
+            border: 2px dashed rgba(255, 215, 0, 0.3);
+            border-radius: 4px;
+            pointer-events: none;
         }
         
         /* Pivot Table Filter Dropdown */
@@ -2408,41 +2422,148 @@
             // Show sheet view
             document.getElementById('sheetView').style.display = 'block';
             
-            // Create table with simplified processing
+            // Create table with merged cells support
             const tableContainer = document.getElementById('sheetView').querySelector('.table-container');
+            const table = document.getElementById('excelTable');
+            table.innerHTML = '';
             
-            // Use a simpler approach for faster rendering
-            const startTime = performance.now();
+            // Get the range of the worksheet
+            const range = XLSX.utils.decode_range(worksheet['!ref']);
+            const merges = worksheet['!merges'] || [];
             
-            // Convert sheet to HTML directly
-            const html = XLSX.utils.sheet_to_html(worksheet, {
-                header: 1,
-                editable: false,
-                table: {
-                    class: 'excel-table'
+            // Create a 2D array to track merged cells
+            const mergedMap = Array(range.e.r - range.s.r + 1).fill(null).map(() => 
+                Array(range.e.c - range.s.c + 1).fill(false)
+            );
+            
+            // Mark merged cells
+            merges.forEach(merge => {
+                for (let r = merge.s.r; r <= merge.e.r; r++) {
+                    for (let c = merge.s.c; c <= merge.e.c; c++) {
+                        mergedMap[r - range.s.r][c - range.s.c] = true;
+                    }
                 }
             });
+    
+            // --- بداية التعديلات الجديدة ---
             
-            tableContainer.innerHTML = html;
+            // Determine if rounding should be applied
+            const shouldRound = !(
+                sheetName.trim() === 'تصريف الايصالات الاسبوعي' || 
+                sheetName.trim() === 'دفتر الايصالات السنوي'
+            );
             
-            const processingTime = performance.now() - startTime;
-            console.log(`Sheet rendered in ${processingTime.toFixed(2)}ms`);
-            
-            // Apply minimal formatting
-            const table = tableContainer.querySelector('table');
-            if (table) {
-                // Only apply essential formatting
-                applyMinimalFormatting(worksheet, table);
-                
-                // If there is a specific customer name, hide non-matching rows
-                if (customerName && sheetName.trim() === 'دفتر ايصالات سنوي') {
-                    hideNonMatchingRows(table, customerName, customerNameColumn);
+            // Find date columns (columns where the first cell contains 'تاريخ' or 'التاريخ')
+            const dateColumns = new Set();
+            const headerRow = range.s.r;
+            for (let C = range.s.c; C <= range.e.c; C++) {
+                const cellAddress = XLSX.utils.encode_cell({r: headerRow, c: C});
+                const cell = worksheet[cellAddress];
+                if (cell && cell.v && typeof cell.v === 'string') {
+                    const headerValue = cell.v.toString().toLowerCase();
+                    if (headerValue.includes('تاريخ')) {
+                        dateColumns.add(C);
+                    }
                 }
-                
-                // If there is a specific driver name, hide non-matching rows
-                if (driverName && sheetName.trim() === 'دفتر ايصالات سنوي') {
-                    hideNonMatchingRows(table, driverName, driverNameColumn);
+            }
+    
+            // --- نهاية التعديلات الجديدة ---
+            
+            // Build table HTML with merged cells and new logic
+            let html = '';
+            for (let R = range.s.r; R <= range.e.r; R++) {
+                html += '<tr>';
+                for (let C = range.s.c; C <= range.e.c; C++) {
+                    // Skip if this cell is part of a merge but not the top-left cell
+                    if (mergedMap[R - range.s.r][C - range.s.c]) {
+                        // Check if this is the top-left cell of a merge
+                        const merge = merges.find(m => 
+                            m.s.r === R && m.s.c === C
+                        );
+                        
+                        if (merge) {
+                            // This is the top-left cell, add rowspan and colspan
+                            const cellAddress = XLSX.utils.encode_cell({r: R, c: C});
+                            const cell = worksheet[cellAddress];
+                            let cellValue = cell ? (cell.v || '') : '';
+    
+                            // --- بداية التعديلات الجديدة ---
+                            
+                            // Apply formatting logic
+                            if (R > headerRow) { // Don't format header cells
+                                if (dateColumns.has(C)) {
+                                    // If it's a date column, format as date
+                                    if (typeof cellValue === 'number') {
+                                        // Excel date is a number of days since 1900-01-01
+                                        const date = new Date((cellValue - 25569) * 86400 * 1000);
+                                        // Format as YYYY-MM-DD or DD/MM/YYYY
+                                        cellValue = date.toLocaleDateString('ar-SA');
+                                    }
+                                } else if (shouldRound && typeof cellValue === 'number') {
+                                    // If rounding is needed and it's a number, round to nearest integer
+                                    cellValue = Math.round(cellValue);
+                                }
+                            }
+                            
+                            // --- نهاية التعديلات الجديدة ---
+    
+                            const rowspan = merge.e.r - merge.s.r + 1;
+                            const colspan = merge.e.c - merge.s.c + 1;
+                            
+                            html += `<td rowspan="${rowspan}" colspan="${colspan}" class="merged-cell">${cellValue}</td>`;
+                        }
+                        // If not the top-left, skip this cell (it's covered by rowspan/colspan)
+                    } else {
+                        // Regular cell
+                        const cellAddress = XLSX.utils.encode_cell({r: R, c: C});
+                        const cell = worksheet[cellAddress];
+                        let cellValue = cell ? (cell.v || '') : '';
+    
+                        // --- بداية التعديلات الجديدة ---
+    
+                        // Apply formatting logic
+                        if (R > headerRow) { // Don't format header cells
+                            if (dateColumns.has(C)) {
+                                // If it's a date column, format as date
+                                if (typeof cellValue === 'number') {
+                                    // Excel date is a number of days since 1900-01-01
+                                    const date = new Date((cellValue - 25569) * 86400 * 1000);
+                                    // Format as YYYY-MM-DD or DD/MM/YYYY
+                                    cellValue = date.toLocaleDateString('ar-SA');
+                                }
+                            } else if (shouldRound && typeof cellValue === 'number') {
+                                // If rounding is needed and it's a number, round to nearest integer
+                                cellValue = Math.round(cellValue);
+                            }
+                        }
+    
+                        // --- نهاية التعديلات الجديدة ---
+    
+                        html += `<td>${cellValue}</td>`;
+                    }
                 }
+                html += '</tr>';
+            }
+            
+            table.innerHTML = html;
+            
+            // Apply header styling to first row
+            const firstRow = table.querySelector('tr');
+            if (firstRow) {
+                firstRow.querySelectorAll('td').forEach(cell => {
+                    cell.tagName = 'TH';
+                    cell.outerHTML = cell.outerHTML.replace(/<td/g, '<th').replace(/<\/td>/g, '</th>');
+                });
+            }
+            
+            // If there is a specific customer name, hide non-matching rows
+            if (customerName && sheetName.trim() === 'دفتر الايصالات السنوي') {
+                hideNonMatchingRows(table, customerName, customerNameColumn);
+            }
+            
+            // If there is a specific driver name, hide non-matching rows
+            if (driverName && sheetName.trim() === 'دفتر الايصالات السنوي') {
+                hideNonMatchingRows(table, driverName, driverNameColumn);
             }
         }
         
@@ -2460,7 +2581,7 @@
             
             for (let i = 1; i < rows.length; i++) { // Start from row 1 to skip header
                 const row = rows[i];
-                const cells = row.querySelectorAll('td');
+                const cells = row.querySelectorAll('td, th');
                 
                 if (cells.length > nameColumn) {
                     const nameCell = cells[nameColumn];
@@ -2483,36 +2604,6 @@
             for (let i = 1; i < rows.length; i++) { // Start from row 1 to skip header
                 rows[i].style.display = '';
             }
-        }
-        
-        // Simplified formatting function for better performance
-        function applyMinimalFormatting(worksheet, table) {
-            const rows = table.querySelectorAll('tr');
-            
-            // Only apply essential formatting
-            rows.forEach((row, rowIndex) => {
-                const cells = row.querySelectorAll('td, th');
-                cells.forEach((cell, colIndex) => {
-                    // Only apply header formatting
-                    if (rowIndex === 0) {
-                        cell.style.background = 'linear-gradient(135deg, var(--accent-primary) 0%, var(--accent-secondary) 100%)';
-                        cell.style.color = '#000';
-                        cell.style.fontWeight = 'bold';
-                        cell.style.position = 'sticky';
-                        cell.style.top = '0';
-                        cell.style.zIndex = '10';
-                    }
-                    
-                    // Apply hover effect
-                    cell.addEventListener('mouseenter', () => {
-                        cell.style.backgroundColor = 'rgba(255, 215, 0, 0.1)';
-                    });
-                    
-                    cell.addEventListener('mouseleave', () => {
-                        cell.style.backgroundColor = '';
-                    });
-                });
-            });
         }
         
         function refreshData() {
@@ -2755,7 +2846,7 @@
             document.getElementById('customerSearchInput').value = '';
             
             // Find the "دفتر ايصالات سنوي" sheet index
-            const sheetIndex = workbook.SheetNames.findIndex(name => name.trim() === 'دفتر ايصالات سنوي');
+            const sheetIndex = workbook.SheetNames.findIndex(name => name.trim() === 'دفتر الايصالات السنوي');
             if (sheetIndex === -1) {
                 showToast('صفحة دفتر ايصالات سنوي غير موجودة', 'error');
                 return;
@@ -2776,7 +2867,7 @@
             document.getElementById('driverSearchInput').value = '';
             
             // Find the "دفتر ايصالات سنوي" sheet index
-            const sheetIndex = workbook.SheetNames.findIndex(name => name.trim() === 'دفتر ايصالات سنوي');
+            const sheetIndex = workbook.SheetNames.findIndex(name => name.trim() === 'دفتر الايصالات السنوي');
             if (sheetIndex === -1) {
                 showToast('صفحة دفتر ايصالات سنوي غير موجودة', 'error');
                 return;
@@ -2798,91 +2889,5 @@
             }
         });
     </script>
-<script>
-// التحقق من دعم Service Worker
-if ('serviceWorker' in navigator) {
-    window.addEventListener('load', function() {
-        navigator.serviceWorker.register('sw.js')
-            .then(function(registration) {
-                console.log('Service Worker registered');
-            })
-            .catch(function(error) {
-                console.log('Service Worker registration failed');
-            });
-    });
-}
-
-// زر التثبيت
-let deferredPrompt;
-window.addEventListener('beforeinstallprompt', function(e) {
-    e.preventDefault();
-    deferredPrompt = e;
-    
-    // إنشاء زر التثبيت
-    if (!document.getElementById('installBtn')) {
-        const installBtn = document.createElement('button');
-        installBtn.id = 'installBtn';
-        installBtn.innerHTML = '📱 ثبّت التطبيق على هاتفك';
-        installBtn.style.cssText = `
-            position: fixed;
-            bottom: 20px;
-            left: 20px;
-            background: linear-gradient(135deg, #FFD700 0%, #FFA500 100%);
-            color: #000;
-            border: none;
-            padding: 15px 25px;
-            border-radius: 30px;
-            font-weight: bold;
-            cursor: pointer;
-            z-index: 10000;
-            font-size: 16px;
-            box-shadow: 0 4px 15px rgba(255, 215, 0, 0.4);
-            animation: pulse 2s infinite;
-            display: flex;
-            align-items: center;
-            gap: 10px;
-        `;
-        
-        // إضافة تأثير حركي
-        const style = document.createElement('style');
-        style.textContent = `
-            @keyframes pulse {
-                0% { transform: scale(1); }
-                50% { transform: scale(1.05); }
-                100% { transform: scale(1); }
-            }
-        `;
-        document.head.appendChild(style);
-        
-        document.body.appendChild(installBtn);
-        
-        installBtn.addEventListener('click', function() {
-            if (deferredPrompt) {
-                deferredPrompt.prompt();
-                deferredPrompt.userChoice.then(function(choiceResult) {
-                    if (choiceResult.outcome === 'accepted') {
-                        console.log('User accepted the install prompt');
-                        installBtn.innerHTML = '✅ جاري التثبيت...';
-                        setTimeout(() => {
-                            installBtn.remove();
-                        }, 2000);
-                    }
-                    deferredPrompt = null;
-                });
-            }
-        });
-    }
-});
-
-// إخفاء زر التثبيت بعد التثبيت
-window.addEventListener('appinstalled', function() {
-    console.log('PWA was installed');
-    const installBtn = document.getElementById('installBtn');
-    if (installBtn) {
-        installBtn.remove();
-    }
-});
-</script>
 </body>
-
 </html>
