@@ -112,6 +112,19 @@
             background: linear-gradient(135deg, rgba(255, 255, 255, 0.7) 0%, rgba(248, 248, 248, 0.5) 50%, rgba(255, 255, 255, 0.7) 100%);
         }
         
+        /* --- Fullscreen Mode Styles --- */
+        body.fullscreen-mode .header,
+        body.fullscreen-mode .sidebar,
+        body.fullscreen-mode .theme-toggle-btn,
+        body.fullscreen-mode .designer-btn,
+        body.fullscreen-mode .offline-indicator {
+            display: none !important;
+        }
+        
+        body.fullscreen-mode .main-content {
+            padding: 0;
+        }
+        
         /* App Container */
         .app-container {
             display: flex;
@@ -686,11 +699,11 @@
             position: fixed;
             top: 0;
             left: 0;
-            width: 100%;
-            height: 100%;
+            width: 100vw;
+            height: 100vh;
             background: var(--bg-primary);
-            z-index: 200;
-            overflow: auto;
+            z-index: 9999;
+            overflow: hidden;
         }
         
         .sheet-header {
@@ -753,13 +766,15 @@
         
         .sheet-content {
             padding: 20px;
+            height: calc(100vh - 60px); /* Full height minus header */
+            overflow: auto;
         }
         
         /* Table Container - Enhanced with Clear Borders */
         .table-container {
             overflow-x: auto;
             -webkit-overflow-scrolling: touch;
-            border: 4px solid var(--table-border);
+            border: 2px solid var(--table-border); /* Reduced border */
             border-radius: 15px;
             box-shadow: 
                 0 10px 30px rgba(0, 0, 0, 0.3),
@@ -790,12 +805,12 @@
             font-size: 12px;
             border-radius: 12px;
             overflow: hidden;
-            border: 3px solid var(--table-border);
+            border: 1px solid var(--table-border); /* Reduced border */
         }
         
         .excel-table th,
         .excel-table td {
-            border: 3px solid var(--table-border);
+            border: 1px solid var(--table-border); /* Reduced border */
             padding: 12px;
             text-align: right;
             min-width: 100px;
@@ -815,8 +830,8 @@
             position: sticky;
             top: 0;
             z-index: 10;
-            border: 4px solid var(--table-border);
-            border-bottom: 5px solid var(--table-border);
+            border: 1px solid var(--table-border); /* Reduced border */
+            border-bottom: 2px solid var(--table-border); /* Reduced border */
             box-shadow: 
                 inset 0 0 0 1px rgba(255, 255, 255, 0.3),
                 0 2px 4px rgba(0, 0, 0, 0.1);
@@ -826,10 +841,6 @@
         /* Enhanced cell borders */
         .excel-table td {
             background-color: var(--bg-primary);
-            border-right: 3px solid var(--table-border);
-            border-left: 3px solid var(--table-border);
-            border-top: 2px solid var(--table-border);
-            border-bottom: 2px solid var(--table-border);
         }
         
         body.light-theme .excel-table td {
@@ -845,26 +856,15 @@
                 0 0 8px rgba(255, 215, 0, 0.2);
         }
         
-        /* Double border effect for better separation */
-        .excel-table tr:nth-child(even) td {
-            border-top: 3px solid var(--table-border);
-            border-bottom: 3px solid var(--table-border);
-        }
-        
-        .excel-table tr:nth-child(odd) td {
-            border-top: 2px solid var(--table-border);
-            border-bottom: 2px solid var(--table-border);
-        }
-        
         /* Special border for first column */
         .excel-table td:first-child {
-            border-right: 4px solid var(--table-border);
+            border-right: 2px solid var(--table-border); /* Reduced border */
             font-weight: 500;
         }
         
         /* Special border for last column */
         .excel-table td:last-child {
-            border-left: 4px solid var(--table-border);
+            border-left: 2px solid var(--table-border); /* Reduced border */
         }
         
         /* Enhanced light theme borders */
@@ -875,7 +875,7 @@
         
         body.light-theme .excel-table th {
             border-color: var(--table-border-light);
-            border-bottom: 4px solid var(--table-border-light);
+            border-bottom: 2px solid var(--table-border-light); /* Reduced border */
         }
         
         body.light-theme .excel-table tr:hover td {
@@ -886,7 +886,7 @@
         /* Cell focus effect */
         .excel-table td:focus,
         .excel-table th:focus {
-            outline: 3px solid var(--table-border);
+            outline: 2px solid var(--table-border); /* Reduced outline */
             outline-offset: -2px;
             z-index: 1;
             position: relative;
@@ -1389,12 +1389,6 @@
                 padding: 10px;
                 font-size: 11px;
                 min-width: 80px;
-                border-width: 2px;
-            }
-            
-            .excel-table th {
-                border-width: 3px;
-                border-bottom-width: 4px;
             }
             
             .theme-toggle-btn {
@@ -2406,6 +2400,9 @@
         }
         
         function openSheetView(sheetIndex, customerName = null, driverName = null) {
+            // --- NEW: Add fullscreen class ---
+            document.body.classList.add('fullscreen-mode');
+
             currentSheetIndex = sheetIndex;
             const sheetName = workbook.SheetNames[sheetIndex];
             const worksheet = workbook.Sheets[sheetName];
@@ -2568,6 +2565,9 @@
         }
         
         function closeSheetView() {
+            // --- NEW: Remove fullscreen class ---
+            document.body.classList.remove('fullscreen-mode');
+
             const table = document.querySelector('#excelTable');
             if (table) {
                 showAllRows(table);
