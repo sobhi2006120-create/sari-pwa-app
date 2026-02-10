@@ -770,42 +770,26 @@
             overflow: auto;
         }
         
-        /* Table Container - Enhanced with Clear Borders */
+        /* Table Container - NO OUTER BORDER */
         .table-container {
             overflow-x: auto;
             -webkit-overflow-scrolling: touch;
-            border: 2px solid var(--table-border); /* Reduced border */
-            border-radius: 15px;
-            box-shadow: 
-                0 10px 30px rgba(0, 0, 0, 0.3),
-                inset 0 1px 0 rgba(255, 255, 255, 0.1);
+            /* Outer border and radius removed */
             background: var(--bg-primary);
             position: relative;
         }
         
-        .table-container::before {
-            content: '';
-            position: absolute;
-            top: -2px;
-            left: -2px;
-            right: -2px;
-            bottom: -2px;
-            border: 2px solid rgba(255, 255, 255, 0.2);
-            border-radius: 15px;
-            pointer-events: none;
-            z-index: 1;
-        }
-        
+        /* Table - NO OUTER BORDER, AUTO LAYOUT */
         .excel-table {
-            width: 100%;
+            width: auto; /* Let table size itself */
             border-collapse: separate;
             border-spacing: 0;
             background: var(--bg-primary);
             color: var(--text-primary);
             font-size: 12px;
-            border-radius: 12px;
             overflow: hidden;
-            border: 1px solid var(--table-border); /* Reduced border */
+            /* Outer border and radius removed */
+            table-layout: auto; /* Allow columns to auto-size */
         }
         
         .excel-table th,
@@ -813,13 +797,13 @@
             border: 1px solid var(--table-border); /* Reduced border */
             padding: 12px;
             text-align: right;
-            min-width: 100px;
-            white-space: nowrap;
+            white-space: nowrap; /* Prevent text wrapping */
             position: relative;
             background-clip: padding-box;
             transition: all 0.2s ease;
             box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.1);
             vertical-align: middle;
+            /* min-width removed to allow auto-sizing */
         }
         
         /* Enhanced header borders */
@@ -854,17 +838,6 @@
             box-shadow: 
                 inset 0 0 0 1px rgba(255, 215, 0, 0.3),
                 0 0 8px rgba(255, 215, 0, 0.2);
-        }
-        
-        /* Special border for first column */
-        .excel-table td:first-child {
-            border-right: 2px solid var(--table-border); /* Reduced border */
-            font-weight: 500;
-        }
-        
-        /* Special border for last column */
-        .excel-table td:last-child {
-            border-left: 2px solid var(--table-border); /* Reduced border */
         }
         
         /* Enhanced light theme borders */
@@ -1388,7 +1361,6 @@
             .excel-table td {
                 padding: 10px;
                 font-size: 11px;
-                min-width: 80px;
             }
             
             .theme-toggle-btn {
@@ -2186,12 +2158,18 @@
             customerNameColumn = -1;
             driverNameColumn = -1;
             
-            // Find the "دفتر ايصالات سنوي" sheet
-            const sheetIndex = workbook.SheetNames.findIndex(name => name.trim() === 'دفتر ايصالات سنوي');
-            if (sheetIndex === -1) return;
-            
-            const worksheet = workbook.Sheets[workbook.SheetNames[sheetIndex]];
-            if (!worksheet['!ref']) return;
+            // --- CORRECTED: Get the last sheet in the workbook dynamically ---
+            if (!workbook || !workbook.SheetNames || workbook.SheetNames.length === 0) {
+                console.warn("Workbook is empty or invalid, cannot extract names.");
+                return;
+            }
+            const lastSheetName = workbook.SheetNames[workbook.SheetNames.length - 1];
+            const worksheet = workbook.Sheets[lastSheetName];
+
+            if (!worksheet || !worksheet['!ref']) {
+                console.warn(`Last sheet "${lastSheetName}" is empty or has no reference.`);
+                return;
+            }
             
             const range = XLSX.utils.decode_range(worksheet['!ref']);
             
@@ -2496,9 +2474,13 @@
                                         // Format as YYYY-MM-DD or DD/MM/YYYY
                                         cellValue = date.toLocaleDateString('ar-SA');
                                     }
-                                } else if (shouldRound && typeof cellValue === 'number') {
-                                    // If rounding is needed and it's a number, round to nearest integer
-                                    cellValue = Math.round(cellValue);
+                                } else if (typeof cellValue === 'number') {
+                                    // --- NEW: Apply rounding and thousand separators ---
+                                    if (shouldRound) {
+                                        cellValue = Math.round(cellValue);
+                                    }
+                                    // Add thousand separator using Arabic locale
+                                    cellValue = cellValue.toLocaleString('ar-SA');
                                 }
                             }
                             
@@ -2528,9 +2510,13 @@
                                     // Format as YYYY-MM-DD or DD/MM/YYYY
                                     cellValue = date.toLocaleDateString('ar-SA');
                                 }
-                            } else if (shouldRound && typeof cellValue === 'number') {
-                                // If rounding is needed and it's a number, round to nearest integer
-                                cellValue = Math.round(cellValue);
+                            } else if (typeof cellValue === 'number') {
+                                // --- NEW: Apply rounding and thousand separators ---
+                                if (shouldRound) {
+                                    cellValue = Math.round(cellValue);
+                                }
+                                // Add thousand separator using Arabic locale
+                                cellValue = cellValue.toLocaleString('ar-SA');
                             }
                         }
     
@@ -2845,12 +2831,13 @@
             // Clear search input
             document.getElementById('customerSearchInput').value = '';
             
-            // Find the "دفتر ايصالات سنوي" sheet index
-            const sheetIndex = workbook.SheetNames.findIndex(name => name.trim() === 'دفتر الايصالات السنوي');
-            if (sheetIndex === -1) {
-                showToast('صفحة دفتر ايصالات سنوي غير موجودة', 'error');
+            // --- CORRECTED: Get the last sheet index dynamically ---
+            if (!workbook || !workbook.SheetNames || workbook.SheetNames.length === 0) {
+                showToast('الملف فارغ أو غير صالح', 'error');
                 return;
             }
+            const lastSheetName = workbook.SheetNames[workbook.SheetNames.length - 1];
+            const sheetIndex = workbook.SheetNames.indexOf(lastSheetName);
             
             // Open sheet view with filtered data
             openSheetView(sheetIndex, customerName);
@@ -2866,13 +2853,14 @@
             // Clear search input
             document.getElementById('driverSearchInput').value = '';
             
-            // Find the "دفتر ايصالات سنوي" sheet index
-            const sheetIndex = workbook.SheetNames.findIndex(name => name.trim() === 'دفتر الايصالات السنوي');
-            if (sheetIndex === -1) {
-                showToast('صفحة دفتر ايصالات سنوي غير موجودة', 'error');
+            // --- CORRECTED: Get the last sheet index dynamically ---
+            if (!workbook || !workbook.SheetNames || workbook.SheetNames.length === 0) {
+                showToast('الملف فارغ أو غير صالح', 'error');
                 return;
             }
-            
+            const lastSheetName = workbook.SheetNames[workbook.SheetNames.length - 1];
+            const sheetIndex = workbook.SheetNames.indexOf(lastSheetName);
+
             // Open sheet view with filtered data
             openSheetView(sheetIndex, null, driverName);
             
